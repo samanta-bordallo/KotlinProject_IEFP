@@ -29,8 +29,8 @@ app.post('/veiculos', (req, res) => {
 });
 
 // Endpoint para comprar veículo
-app.post('/comprar', (req, res) => {
-    const { idVeiculo } = req.body;
+app.delete('/comprar/:idVeiculo', (req, res) => {
+    const idVeiculo = req.params.idVeiculo;
     const query = 'DELETE FROM veiculos WHERE id = ?';
     db.query(query, [idVeiculo], (err, results) => {
         if (err) {
@@ -43,25 +43,29 @@ app.post('/comprar', (req, res) => {
     });
 });
 
+
 // Endpoint para vender veículo
-app.post('/vender', (req, res) => {
-    const { id, modelo, ano, preco } = req.body;
-    const query = 'INSERT INTO veiculos (id, modelo, ano, preco) VALUES (?, ?, ?, ?)';
-    db.query(query, [id, modelo, ano, preco], (err, results) => {
+app.delete('/vender/:idVeiculo', (req, res) => {
+    const idVeiculo = req.params.idVeiculo;
+    const query = 'DELETE FROM veiculos WHERE id = ?';
+    db.query(query, [idVeiculo], (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
+        } else if (results.affectedRows === 0) {
+            res.status(404).json({ message: 'Veículo não encontrado.' });
         } else {
             res.json({ message: 'Veículo vendido com sucesso!' });
         }
     });
 });
 
+
 // Endpoint para atualizar preço do veículo
-app.put('/veiculos/:id', (req, res) => {
-    const { id } = req.params;
+app.put('/veiculos/:idVeiculo', (req, res) => {
+    const idVeiculo = req.params.idVeiculo;
     const { preco } = req.body;
     const query = 'UPDATE veiculos SET preco = ? WHERE id = ?';
-    db.query(query, [preco, id], (err, results) => {
+    db.query(query, [preco, idVeiculo], (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else if (results.affectedRows === 0) {
@@ -71,6 +75,7 @@ app.put('/veiculos/:id', (req, res) => {
         }
     });
 });
+
 
 // Endpoint para editar NIF de uma pessoa
 app.put('/pessoas/:tipo', (req, res) => {

@@ -5,12 +5,11 @@ import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvMainHeader: TextView
@@ -23,6 +22,8 @@ class MainActivity : AppCompatActivity() {
     private val gerente = Gerente(1, "Ana", "123456789", 5000.0)
     private val vendedor = Vendedor(1, "Pedro", "789456123", 3000.0)
     private val cliente = Cliente(1, "Carlos", "456123789")
+
+    private val apiService by lazy { RetrofitClient.instance.create(ApiService::class.java) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,17 +54,6 @@ class MainActivity : AppCompatActivity() {
             hideSoftKeyboard()
             showMenu()
         }
-
-        // Adiciona veículos ao estoque
-        val veiculo1 = Veiculo(1, "Toyota Corolla", 2020, 80000.0)
-        val veiculo2 = Veiculo(2, "Honda Civic", 2019, 75000.0)
-        val veiculo3 = Veiculo(3, "Ford Focus", 2018, 60000.0)
-        val veiculo4 = Veiculo(4, "Volkswagen Golf", 2017, 55000.0)
-
-        gerente.adicionarVeiculo(veiculo1)
-        gerente.adicionarVeiculo(veiculo2)
-        gerente.adicionarVeiculo(veiculo3)
-        gerente.adicionarVeiculo(veiculo4)
     }
 
     private fun hideInputs() {
@@ -119,39 +109,74 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun listarCarros() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Veículos em Estoque")
-        val veiculos = gerente.veiculosEmEstoque.joinToString("\n") { "${it.id} - ${it.modelo} - Ano: ${it.ano}, Preço: ${it.preco} €" }
-        builder.setMessage(veiculos)
-        builder.setPositiveButton("OK", null)
-        builder.show()
+        apiService.getVeiculos().enqueue(object : Callback<List<Veiculo>> {
+            override fun onResponse(call: Call<List<Veiculo>>, response: Response<List<Veiculo>>) {
+                val veiculos = response.body()
+                if (veiculos != null) {
+                    val builder = AlertDialog.Builder(this@MainActivity)
+                    builder.setTitle("Veículos em Estoque")
+                    val veiculosList = veiculos.joinToString("\n") { "${it.id} - ${it.modelo} - Ano: ${it.ano}, Preço: ${it.preco} €" }
+                    builder.setMessage(veiculosList)
+                    builder.setPositiveButton("OK", null)
+                    builder.show()
+                } else {
+                    tvMainMsg.text = "Erro ao carregar veículos."
+                }
+            }
+
+            override fun onFailure(call: Call<List<Veiculo>>, t: Throwable) {
+                tvMainMsg.text = "Erro ao carregar veículos: ${t.message}"
+            }
+        })
     }
 
     private fun comprarCarro() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Comprar Carro")
-        val veiculos = gerente.veiculosEmEstoque.joinToString("\n") { "${it.id} - ${it.modelo} - Ano: ${it.ano}, Preço: ${it.preco} €" }
-        builder.setMessage("Veículos disponíveis:\n$veiculos\n\nDigite o ID do veículo que deseja comprar:")
-
-        val input = EditText(this)
-        builder.setView(input)
-        builder.setPositiveButton("Comprar") { _, _ ->
-            val idVeiculo = input.text.toString().toIntOrNull()
-            if (idVeiculo != null) {
-                val veiculoSelecionado = gerente.buscarVeiculoPorId(idVeiculo)
-                if (veiculoSelecionado != null) {
-                    cliente.comprarVeiculo(veiculoSelecionado)
-                    gerente.veiculosEmEstoque.remove(veiculoSelecionado)
-                    tvMainMsg.text = "Veículo ${veiculoSelecionado.modelo} comprado por ${cliente.nome}."
-                } else {
-                    tvMainMsg.text = "Veículo não encontrado."
+        apiService.getVeiculos().enqueue(object : Callback<List<Veiculo>> {
+            override fun onResponse(call: Call<List<Veiculo>>, response: Response<List<Veiculo>>) {
+                val veiculos = response.body()
+                if (veiculos != null) {
+                    val veiculosList = veiculos.joinToString("\n") { "${it.id} - ${it.modelo} - Ano: ${it.ano}, Preço: ${it.preco} €" }
+                    builder.setMessage("Veículos disponíveis:\n$veiculosList\n\nDigite o ID do veículo que deseja comprar:")
                 }
-            } else {
-                tvMainMsg.text = "ID inválido."
+
+                val input = EditText(this@MainActivity)
+                builder.setView(input)
+                builder.setPositiveButton("Comprar") { _, _ ->
+                    val idVeiculo = input.text.toString().toIntOrNull()
+                    if (idVeiculo != null) {
+                        comprarCarro(idVeiculo)
+                    } else {
+                        tvMainMsg.text = "ID inválido."
+                    }
+                }
+                builder.setNegativeButton("Cancelar", null)
+                builder.show()
             }
-        }
-        builder.setNegativeButton("Cancelar", null)
-        builder.show()
+
+            override fun onFailure(call: Call<List<Veiculo>>, t: Throwable) {
+                tvMainMsg.text = "Erro ao carregar veículos: ${t.message}"
+            }
+        })
+    }
+
+    private fun comprarCarro(idVeiculo: Int) {
+        apiService.comprarVeiculo(idVeiculo).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                if (response.isSuccessful) {
+                    tvMainMsg.text = "Veículo comprado com sucesso!"
+                    // Atualizar a lista de veículos após a compra (opcional)
+                    // getVeiculos()
+                } else {
+                    tvMainMsg.text = "Erro ao comprar veículo: ${response.message()}"
+                }
+            }
+
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                tvMainMsg.text = "Erro ao comprar veículo: ${t.message}"
+            }
+        })
     }
 
     private fun venderCarro() {
@@ -163,14 +188,7 @@ class MainActivity : AppCompatActivity() {
         builder.setPositiveButton("Vender") { _, _ ->
             val idVeiculo = input.text.toString().toIntOrNull()
             if (idVeiculo != null) {
-                val veiculoSelecionado = gerente.buscarVeiculoPorId(idVeiculo)
-                if (veiculoSelecionado != null) {
-                    vendedor.vender(veiculoSelecionado, cliente)
-                    gerente.veiculosEmEstoque.remove(veiculoSelecionado)
-                    tvMainMsg.text = "Veículo ${veiculoSelecionado.modelo} vendido por ${vendedor.nome} para ${cliente.nome}."
-                } else {
-                    tvMainMsg.text = "Veículo não encontrado."
-                }
+                venderCarro(idVeiculo)
             } else {
                 tvMainMsg.text = "ID inválido."
             }
@@ -178,6 +196,67 @@ class MainActivity : AppCompatActivity() {
         builder.setNegativeButton("Cancelar", null)
         builder.show()
     }
+
+    private fun venderCarro(idVeiculo: Int) {
+        apiService.venderVeiculo(idVeiculo).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                if (response.isSuccessful) {
+                    tvMainMsg.text = "Veículo vendido com sucesso!"
+                } else {
+                    tvMainMsg.text = "Erro ao vender veículo: ${response.message()}"
+                }
+            }
+
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                tvMainMsg.text = "Erro ao vender veículo: ${t.message}"
+            }
+        })
+    }
+
+    private fun atualizarValorVeiculo() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Atualizar Valor do Veículo")
+        val inputId = EditText(this)
+        val inputPreco = EditText(this)
+        inputId.hint = "ID do veículo"
+        inputPreco.hint = "Novo preço"
+        val layout = LinearLayout(this)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.addView(inputId)
+        layout.addView(inputPreco)
+        builder.setView(layout)
+        builder.setPositiveButton("Atualizar") { _, _ ->
+            val idVeiculo = inputId.text.toString().toIntOrNull()
+            val novoPreco = inputPreco.text.toString().toDoubleOrNull()
+            if (idVeiculo != null && novoPreco != null) {
+                atualizarValorVeiculo(idVeiculo, novoPreco)
+            } else {
+                tvMainMsg.text = "ID ou preço inválido."
+            }
+        }
+        builder.setNegativeButton("Cancelar", null)
+        builder.show()
+    }
+
+    private fun atualizarValorVeiculo(idVeiculo: Int, novoPreco: Double) {
+        apiService.atualizarPrecoVeiculo(idVeiculo, novoPreco).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                if (response.isSuccessful) {
+                    tvMainMsg.text = "Preço do veículo atualizado com sucesso!"
+                } else {
+                    tvMainMsg.text = "Erro ao atualizar preço do veículo: ${response.message()}"
+                }
+            }
+
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                tvMainMsg.text = "Erro ao atualizar preço do veículo: ${t.message}"
+            }
+        })
+    }
+
+
+
+
     private fun adicionarCarro() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Adicionar Carro")
@@ -203,10 +282,17 @@ class MainActivity : AppCompatActivity() {
             val ano = anoInput.text.toString().toIntOrNull()
             val preco = precoInput.text.toString().toDoubleOrNull()
 
-            if (id != null && ano != null && preco != null) {
+            if (id != null && modelo.isNotEmpty() && ano != null && preco != null) {
                 val novoVeiculo = Veiculo(id, modelo, ano, preco)
-                gerente.adicionarVeiculo(novoVeiculo)
-                tvMainMsg.text = "Veículo $modelo adicionado ao estoque."
+                apiService.addVeiculo(novoVeiculo).enqueue(object : Callback<Veiculo> {
+                    override fun onResponse(call: Call<Veiculo>, response: Response<Veiculo>) {
+                        tvMainMsg.text = "Veículo $modelo adicionado ao estoque."
+                    }
+
+                    override fun onFailure(call: Call<Veiculo>, t: Throwable) {
+                        tvMainMsg.text = "Erro ao adicionar veículo: ${t.message}"
+                    }
+                })
             } else {
                 tvMainMsg.text = "Detalhes do veículo inválidos."
             }
@@ -233,45 +319,6 @@ class MainActivity : AppCompatActivity() {
         builder.show()
     }
 
-    private fun atualizarValorVeiculo() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Atualizar Valor do Veículo")
-        val input = EditText(this)
-        builder.setView(input)
-        builder.setMessage("Digite o ID do veículo que deseja atualizar o preço:")
-
-        builder.setPositiveButton("Atualizar") { _, _ ->
-            val idVeiculo = input.text.toString().toIntOrNull()
-            if (idVeiculo != null) {
-                val veiculo = gerente.buscarVeiculoPorId(idVeiculo)
-                if (veiculo != null) {
-                    val novoPrecoDialog = AlertDialog.Builder(this)
-                    novoPrecoDialog.setTitle("Novo Preço")
-                    val novoPrecoInput = EditText(this)
-                    novoPrecoInput.hint = "Novo preço"
-                    novoPrecoDialog.setView(novoPrecoInput)
-
-                    novoPrecoDialog.setPositiveButton("Confirmar") { _, _ ->
-                        val novoPreco = novoPrecoInput.text.toString().toDoubleOrNull()
-                        if (novoPreco != null) {
-                            veiculo.preco = novoPreco
-                            tvMainMsg.text = "Preço do veículo ${veiculo.modelo} atualizado para $novoPreco €"
-                        } else {
-                            tvMainMsg.text = "Preço inválido."
-                        }
-                    }
-                    novoPrecoDialog.setNegativeButton("Cancelar", null)
-                    novoPrecoDialog.show()
-                } else {
-                    tvMainMsg.text = "Veículo não encontrado."
-                }
-            } else {
-                tvMainMsg.text = "ID inválido."
-            }
-        }
-        builder.setNegativeButton("Cancelar", null)
-        builder.show()
-    }
 
     private fun editarNif() {
         val builder = AlertDialog.Builder(this)
