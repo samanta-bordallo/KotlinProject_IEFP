@@ -79,4 +79,3 @@ open class Veiculo(val id: Int, val modelo: String, val ano: Int, preco: Double)
             field = value
         }
 }
-
