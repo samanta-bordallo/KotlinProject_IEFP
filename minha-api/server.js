@@ -48,6 +48,7 @@ app.delete('/comprar/:idVeiculo', (req, res) => {
 app.delete('/vender/:idVeiculo', (req, res) => {
     const idVeiculo = req.params.idVeiculo;
     const query = 'DELETE FROM veiculos WHERE id = ?';
+
     db.query(query, [idVeiculo], (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });

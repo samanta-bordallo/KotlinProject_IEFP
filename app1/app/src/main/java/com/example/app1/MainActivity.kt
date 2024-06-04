@@ -179,6 +179,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+
     private fun venderCarro() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Vender Carro")
@@ -188,6 +189,9 @@ class MainActivity : AppCompatActivity() {
         builder.setPositiveButton("Vender") { _, _ ->
             val idVeiculo = input.text.toString().toIntOrNull()
             if (idVeiculo != null) {
+                println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                println(idVeiculo)
+                println(idVeiculo::class.simpleName)
                 venderCarro(idVeiculo)
             } else {
                 tvMainMsg.text = "ID inválido."
