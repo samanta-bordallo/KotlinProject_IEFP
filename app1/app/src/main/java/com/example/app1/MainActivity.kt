@@ -166,8 +166,6 @@ class MainActivity : AppCompatActivity() {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 if (response.isSuccessful) {
                     tvMainMsg.text = "Veículo comprado com sucesso!"
-                    // Atualizar a lista de veículos após a compra (opcional)
-                    // getVeiculos()
                 } else {
                     tvMainMsg.text = "Erro ao comprar veículo: ${response.message()}"
                 }
@@ -179,30 +177,39 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-
     private fun venderCarro() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Vender Carro")
-        val input = EditText(this)
-        builder.setView(input)
-        builder.setMessage("Digite o ID do veículo que deseja vender:")
-        builder.setPositiveButton("Vender") { _, _ ->
-            val idVeiculo = input.text.toString().toIntOrNull()
-            if (idVeiculo != null) {
-                println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                println(idVeiculo)
-                println(idVeiculo::class.simpleName)
-                venderCarro(idVeiculo)
-            } else {
-                tvMainMsg.text = "ID inválido."
+        apiService.getVeiculos().enqueue(object : Callback<List<Veiculo>> {
+            override fun onResponse(call: Call<List<Veiculo>>, response: Response<List<Veiculo>>) {
+                val veiculos = response.body()
+                if (veiculos != null) {
+                    val veiculosList = veiculos.joinToString("\n") { "${it.id} - ${it.modelo} - Ano: ${it.ano}, Preço: ${it.preco} €" }
+                    builder.setMessage("Veículos disponíveis:\n$veiculosList\n\nDigite o ID do veículo que deseja vender:")
+                }
+
+                val input = EditText(this@MainActivity)
+                builder.setView(input)
+                builder.setPositiveButton("Vender") { _, _ ->
+                    val idVeiculo = input.text.toString().toIntOrNull()
+                    if (idVeiculo != null) {
+                        venderCarro(idVeiculo)
+                    } else {
+                        tvMainMsg.text = "ID inválido."
+                    }
+                }
+                builder.setNegativeButton("Cancelar", null)
+                builder.show()
             }
-        }
-        builder.setNegativeButton("Cancelar", null)
-        builder.show()
+
+            override fun onFailure(call: Call<List<Veiculo>>, t: Throwable) {
+                tvMainMsg.text = "Erro ao carregar veículos: ${t.message}"
+            }
+        })
     }
 
     private fun venderCarro(idVeiculo: Int) {
-        apiService.venderVeiculo(idVeiculo).enqueue(object : Callback<Void> {
+        apiService.comprarVeiculo(idVeiculo).enqueue(object : Callback<Void> {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 if (response.isSuccessful) {
                     tvMainMsg.text = "Veículo vendido com sucesso!"
@@ -216,7 +223,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
     private fun atualizarValorVeiculo() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Atualizar Valor do Veículo")
@@ -257,9 +263,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
-
-
 
     private fun adicionarCarro() {
         val builder = AlertDialog.Builder(this)

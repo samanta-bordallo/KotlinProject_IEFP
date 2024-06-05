@@ -16,12 +16,12 @@ interface ApiService {
     @POST("veiculos")
     fun addVeiculo(@Body veiculo: Veiculo): Call<Veiculo>
 
-    @POST("/comprar/{id}")
-    fun comprarVeiculo(@Body idVeiculo: Int): Call<Void>
+    @DELETE("/comprar/{id}")
+    fun comprarVeiculo(@Path("id") idVeiculo: Int): Call<Void>
 
-    @POST("vender")
-    fun venderVeiculo(@Body veiculo: Int): Call<Void>
+    @DELETE("vender/{id}")
+    fun venderVeiculo(@Path("id") idVeiculo: Int): Call<Void>
 
     @PUT("veiculos/{id}")
-    fun atualizarPrecoVeiculo(@Path("id") id: Int, @Body preco: Double): Call<Void>
+    fun atualizarPrecoVeiculo(@Path("id") idVeiculo: Int, @Body preco: Double): Call<Void>
 }
