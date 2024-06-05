@@ -23,5 +23,6 @@ interface ApiService {
     fun venderVeiculo(@Path("id") idVeiculo: Int): Call<Void>
 
     @PUT("veiculos/{id}")
-    fun atualizarPrecoVeiculo(@Path("id") idVeiculo: Int, @Body preco: Double): Call<Void>
+    fun atualizarPrecoVeiculo(@Path("id") idVeiculo: Int, @Body precoUpdate: MainActivity.PrecoUpdate): Call<Void>
+
 }

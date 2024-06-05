@@ -108,6 +108,8 @@ class MainActivity : AppCompatActivity() {
         inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
+    data class PrecoUpdate(val preco: Double)
+
     private fun listarCarros() {
         apiService.getVeiculos().enqueue(object : Callback<List<Veiculo>> {
             override fun onResponse(call: Call<List<Veiculo>>, response: Response<List<Veiculo>>) {
@@ -209,7 +211,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun venderCarro(idVeiculo: Int) {
-        apiService.comprarVeiculo(idVeiculo).enqueue(object : Callback<Void> {
+        apiService.venderVeiculo(idVeiculo).enqueue(object : Callback<Void> {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 if (response.isSuccessful) {
                     tvMainMsg.text = "Veículo vendido com sucesso!"
@@ -249,7 +251,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun atualizarValorVeiculo(idVeiculo: Int, novoPreco: Double) {
-        apiService.atualizarPrecoVeiculo(idVeiculo, novoPreco).enqueue(object : Callback<Void> {
+        val precoUpdate = PrecoUpdate(novoPreco)
+        apiService.atualizarPrecoVeiculo(idVeiculo, precoUpdate).enqueue(object : Callback<Void> {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 if (response.isSuccessful) {
                     tvMainMsg.text = "Preço do veículo atualizado com sucesso!"
